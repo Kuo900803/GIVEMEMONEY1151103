@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>台美股定期定額與多標的比對試算器</title>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --secondary: #10b981;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      
+      /* Colors for Target 1, 2, 3 */
+      --t1-color: #2563eb;
+      --t2-color: #10b981;
+      --t3-color: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 16px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+
+    header p {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .global-setting {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text-main);
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      background-color: #fff;
+      color: var(--text-main);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+      border-color: var(--primary);
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .row .form-group {
+      flex: 1;
+    }
+
+    /* Target Box Styles */
+    .targets-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .target-card {
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+      position: relative;
+      background: #fafafa;
+      border: 2px solid var(--border);
+      transition: all 0.2s;
+    }
+
+    .target-card.t1 { border-color: var(--t1-color); }
+    .target-card.t2 { border-color: var(--t2-color); }
+    .target-card.t3 { border-color: var(--t3-color); }
+
+    .target-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .target-title.t1 { color: var(--t1-color); }
+    .target-title.t2 { color: var(--t2-color); }
+    .target-title.t3 { color: var(--t3-color); }
+
+    .btn-remove {
+      background: #fee2e2;
+      color: #ef4444;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-add {
+      background: #ecfdf5;
+      color: #059669;
+      border: 1px dashed #10b981;
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 16px;
+      transition: background 0.2s;
+    }
+
+    .btn-add:hover {
+      background: #d1fae5;
+    }
+
+    .btn-calc {
+      width: 100%;
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .btn-calc:active {
+      background-color: var(--primary-dark);
+    }
+
+    /* Results */
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: #f8fafc;
+      padding: 14px;
+      border-radius: 8px;
+      border-left: 4px solid var(--border);
+    }
+
+    .stat-card.t1 { border-left-color: var(--t1-color); background: #eff6ff; }
+    .stat-card.t2 { border-left-color: var(--t2-color); background: #ecfdf5; }
+    .stat-card.t3 { border-left-color: var(--t3-color); background: #fffbeb; }
+
+    .stat-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .stat-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .stat-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 320px;
+      margin-top: 10px;
+    }
+
+    .table-responsive {
+      overflow-x: auto;
+      margin-top: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: right;
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+
+    th, td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background-color: #f8fafc;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    th:first-child, td:first-child {
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      .row {
+        flex-direction: column;
+        gap: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>📈 定期定額與多標的比對試算器</h1>
+    <p>同時比對最多 3 檔台美股/ETF，試算「股息再投入」複利效益</p>
+  </header>
+
+  <!-- Input Settings Card -->
+  <div class="card">
+    
+    <!-- Global Settings -->
+    <div class="global-setting">
+      <div class="form-group" style="margin-bottom: 0;">
+        <label for="years"><i class="fa-solid fa-clock"></i> 共同試算年數 (1 ~ 50 年)</label>
+        <input type="number" id="years" class="form-control" value="10" min="1" max="50">
+      </div>
+    </div>
+
+    <!-- Targets Input Area -->
+    <div id="targetsContainer"></div>
+
+    <button id="btnAddTarget" class="btn-add" onclick="addTarget()">
+      <i class="fa-solid fa-plus"></i> 新增比較標的 (最多 3 檔)
+    </button>
+
+    <button class="btn-calc" onclick="calculate()">
+      <i class="fa-solid fa-calculator"></i> 開始多標的對比試算
+    </button>
+  </div>
+
+  <!-- Results Card -->
+  <div id="resultCard" class="card" style="display: none;">
+    <h3 style="margin-bottom: 14px; font-size: 1.1rem;"><i class="fa-solid fa-chart-line"></i> 標的對比與股息再投入期末總資產</h3>
+    
+    <!-- Summary Stat Cards -->
+    <div class="results-grid" id="statsGrid"></div>
+
+    <!-- Growth Curve Chart -->
+    <div class="chart-container">
+      <canvas id="growthChart"></canvas>
+    </div>
+
+    <!-- Table -->
+    <div class="table-responsive">
+      <table id="resultTable">
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Stock Option Presets Data
+  const PRESET_OPTIONS = [
+    { group: '台股市值型 ETF', items: [
+      { name: '0050 元大台灣50', cagr: 14.5, div: 3.0 },
+      { name: '006208 富邦台50', cagr: 14.5, div: 3.0 }
+    ]},
+    { group: '台股高股息 ETF', items: [
+      { name: '00878 國泰永續高股息', cagr: 11.0, div: 6.5 },
+      { name: '00919 群益台灣精選高息', cagr: 12.0, div: 9.0 },
+      { name: '00929 復華台灣科技優息', cagr: 11.0, div: 7.5 },
+      { name: '0056 元大高股息', cagr: 10.0, div: 7.0 }
+    ]},
+    { group: '台股權值個股', items: [
+      { name: '2330 台積電', cagr: 24.0, div: 2.0 },
+      { name: '2454 聯發科', cagr: 16.0, div: 4.5 },
+      { name: '2382 廣達', cagr: 14.0, div: 3.8 },
+      { name: '2317 鴻海', cagr: 11.0, div: 5.0 }
+    ]},
+    { group: '美股熱門 ETF', items: [
+      { name: 'QQQ 納斯達克100', cagr: 20.0, div: 0.6 },
+      { name: 'VOO / SPY S&P 500', cagr: 15.5, div: 1.3 },
+      { name: 'SMH 費半 ETF', cagr: 25.0, div: 0.8 },
+      { name: 'SOXX 半導體 ETF', cagr: 23.0, div: 1.1 },
+      { name: 'VTI 全美股市', cagr: 15.0, div: 1.3 },
+      { name: 'VT 全球股市', cagr: 12.0, div: 2.0 }
+    ]},
+    { group: '美股科技巨頭', items: [
+      { name: 'NVDA 輝達', cagr: 70.0, div: 0.1 },
+      { name: 'TSLA 特斯拉', cagr: 40.0, div: 0.0 },
+      { name: 'AAPL 蘋果', cagr: 26.0, div: 0.6 },
+      { name: 'MSFT 微軟', cagr: 25.0, div: 0.7 },
+      { name: 'AMZN 亞馬遜', cagr: 21.0, div: 0.0 },
+      { name: 'META 臉書', cagr: 21.0, div: 0.4 },
+      { name: 'GOOGL 谷歌', cagr: 19.0, div: 0.2 }
+    ]}
+  ];
+
+  let targetCount = 0;
+  let chartInstance = null;
+
+  // Initial Target Defaults
+  const initialTargets = [
+    { nameIdx: '0050 元大台灣50', monthly: 10000, initial: 0, extra: 0 },
+    { nameIdx: 'QQQ 納斯達克100', monthly: 10000, initial: 0, extra: 0 }
+  ];
+
+  function buildSelectHTML(id) {
+    let html = `<select id="preset_${id}" class="form-control" onchange="onTargetPresetChange(${id})">`;
+    PRESET_OPTIONS.forEach(g => {
+      html += `<optgroup label="${g.group}">`;
+      g.items.forEach(item => {
+        html += `<option value="${item.name}" data-cagr="${item.cagr}" data-div="${item.div}">${item.name} (年化 ~${item.cagr}%, 殖利率 ~${item.div}%)</option>`;
+      });
+      html += `</optgroup>`;
+    });
+    html += `<option value="custom" data-cagr="10" data-div="3">-- 自訂參數 --</option>`;
+    html += `</select>`;
+    return html;
+  }
+
+  function addTarget(defaultData = null) {
+    if (targetCount >= 3) return;
+    targetCount++;
+    const id = targetCount;
+    
+    const container = document.getElementById('targetsContainer');
+    const card = document.createElement('div');
+    card.className = `target-card t${id}`;
+    card.id = `targetCard_${id}`;
+
+    card.innerHTML = `
+      <div class="target-title t${id}">
+        <span><i class="fa-solid fa-layer-group"></i> 標的 ${id}</span>
+        ${id > 1 ? `<button class="btn-remove" onclick="removeTarget(${id})"><i class="fa-solid fa-trash"></i> 移除</button>` : ''}
+      </div>
+
+      <div class="form-group">
+        <label>選擇熱門標的 / 自訂</label>
+        ${buildSelectHTML(id)}
+      </div>
+
+      <div class="row">
+        <div class="form-group">
+          <label>預估年化總報酬率 (%)</label>
+          <input type="number" id="cagr_${id}" class="form-control" value="14.5" step="0.1">
+        </div>
+        <div class="form-group">
+          <label>預估年化殖利率 (%)</label>
+          <input type="number" id="divYield_${id}" class="form-control" value="3.0" step="0.1" min="0">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="form-group">
+          <label>每月定期定額 ($)</label>
+          <input type="number" id="monthly_${id}" class="form-control" value="10000" step="1000">
+        </div>
+        <div class="form-group">
+          <label>起始本金 ($)</label>
+          <input type="number" id="initial_${id}" class="form-control" value="0" step="10000">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>每年額外加碼金額 ($)</label>
+        <input type="number" id="extraAdd_${id}" class="form-control" value="0" placeholder="例如年終獎金投入" step="5000">
+      </div>
+    `;
+
+    container.appendChild(card);
+
+    // Apply default selection if available
+    if (defaultData) {
+      const select = document.getElementById(`preset_${id}`);
+      select.value = defaultData.nameIdx;
+      document.getElementById(`monthly_${id}`).value = defaultData.monthly;
+      document.getElementById(`initial_${id}`).value = defaultData.initial;
+      document.getElementById(`extraAdd_${id}`).value = defaultData.extra;
+      onTargetPresetChange(id);
+    } else {
+      onTargetPresetChange(id);
+    }
+
+    updateAddButton();
+  }
+
+  function removeTarget(id) {
+    const card = document.getElementById(`targetCard_${id}`);
+    if (card) {
+      card.remove();
+      targetCount--;
+      reindexTargets();
+      updateAddButton();
+    }
+  }
+
+  function reindexTargets() {
+    const cards = document.querySelectorAll('.target-card');
+    cards.forEach((card, index) => {
+      const newId = index + 1;
+      card.id = `targetCard_${newId}`;
+      card.className = `target-card t${newId}`;
+      const titleSpan = card.querySelector('.target-title span');
+      titleSpan.innerHTML = `<i class="fa-solid fa-layer-group"></i> 標的 ${newId}`;
+      
+      const title = card.querySelector('.target-title');
+      title.className = `target-title t${newId}`;
+    });
+    targetCount = cards.length;
+  }
+
+  function updateAddButton() {
+    const btn = document.getElementById('btnAddTarget');
+    if (targetCount >= 3) {
+      btn.style.display = 'none';
+    } else {
+      btn.style.display = 'block';
+    }
+  }
+
+  function onTargetPresetChange(id) {
+    const select = document.getElementById(`preset_${id}`);
+    const cagrInput = document.getElementById(`cagr_${id}`);
+    const divInput = document.getElementById(`divYield_${id}`);
+
+    if (select.value !== 'custom') {
+      const selectedOption = select.options[select.selectedIndex];
+      cagrInput.value = selectedOption.getAttribute('data-cagr');
+      divInput.value = selectedOption.getAttribute('data-div');
+    }
+  }
+
+  function formatCurrency(num) {
+    return '$' + Math.round(num).toLocaleString();
+  }
+
+  function calculate() {
+    const years = parseInt(document.getElementById('years').value) || 1;
+    const cards = document.querySelectorAll('.target-card');
+
+    let targetsData = [];
+
+    cards.forEach((card, idx) => {
+      const id = idx + 1;
+      const select = document.getElementById(`preset_${id}`);
+      const name = select.value === 'custom' ? `標的 ${id} (自訂)` : select.value;
+      const cagr = (parseFloat(document.getElementById(`cagr_${id}`).value) || 0) / 100;
+      const divYield = (parseFloat(document.getElementById(`divYield_${id}`).value) || 0) / 100;
+      const monthly = parseFloat(document.getElementById(`monthly_${id}`).value) || 0;
+      const initial = parseFloat(document.getElementById(`initial_${id}`).value) || 0;
+      const extraAdd = parseFloat(document.getElementById(`extraAdd_${id}`).value) || 0;
+
+      // Rate Calculations
+      const capitalRate = Math.max(0, cagr - divYield);
+      const monthlyCapitalRate = Math.pow(1 + capitalRate, 1/12) - 1;
+      const monthlyTotalRate = Math.pow(1 + cagr, 1/12) - 1;
+
+      let principalArr = [];
+      let baseArr = [];      // 純資本利得 (未再投入)
+      let reinvestArr = [];  // 股息再投入
+
+      let curPrincipal = initial;
+      let curBase = initial;
+      let curReinvest = initial;
+
+      for (let y = 1; y <= years; y++) {
+        for (let m = 1; m <= 12; m++) {
+          curBase = (curBase + monthly) * (1 + monthlyCapitalRate);
+          curReinvest = (curReinvest + monthly) * (1 + monthlyTotalRate);
+          curPrincipal += monthly;
+        }
+
+        curReinvest += extraAdd;
+        curBase += extraAdd;
+
+        principalArr.push(Math.round(curPrincipal));
+        baseArr.push(Math.round(curBase));
+        reinvestArr.push(Math.round(curReinvest));
+      }
+
+      targetsData.push({
+        id,
+        name,
+        principalArr,
+        baseArr,
+        reinvestArr,
+        finalPrincipal: curPrincipal,
+        finalBase: curBase,
+        finalReinvest: curReinvest
+      });
+    });
+
+    displayResults(years, targetsData);
+  }
+
+  function displayResults(years, targets) {
+    document.getElementById('resultCard').style.display = 'block';
+
+    // 1. Stats Grid
+    const statsGrid = document.getElementById('statsGrid');
+    statsGrid.innerHTML = '';
+    targets.forEach((t) => {
+      const card = document.createElement('div');
+      card.className = `stat-card t${t.id}`;
+      card.innerHTML = `
+        <div class="stat-title" style="color: var(--t${t.id}-color);">${t.name}</div>
+        <div class="stat-value" style="color: var(--t${t.id}-color);">${formatCurrency(t.finalReinvest)}</div>
+        <div class="stat-sub">總投入本金: ${formatCurrency(t.finalPrincipal)}</div>
+        <div class="stat-sub">未再投入資產: ${formatCurrency(t.finalBase)}</div>
+      `;
+      statsGrid.appendChild(card);
+    });
+
+    // 2. Chart Rendering
+    const labels = Array.from({length: years}, (_, i) => `第 ${i + 1} 年`);
+    const colors = ['#2563eb', '#10b981', '#f59e0b'];
+
+    let datasets = targets.map((t, i) => ({
+      label: `${t.name} (再投入)`,
+      data: t.reinvestArr,
+      borderColor: colors[i],
+      backgroundColor: colors[i] + '15',
+      fill: false,
+      tension: 0.2,
+      borderWidth: 2.5
+    }));
+
+    // Add baseline principal of Target 1 for reference
+    datasets.push({
+      label: '投入本金參考',
+      data: targets[0].principalArr,
+      borderColor: '#94a3b8',
+      borderDash: [4, 4],
+      fill: false,
+      tension: 0.1,
+      borderWidth: 1.5
+    });
+
+    const ctx = document.getElementById('growthChart').getContext('2d');
+    if (chartInstance) chartInstance.destroy();
+
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } }
+        },
+        scales: {
+          y: {
+            ticks: {
+              callback: function(value) {
+                return '$' + (value / 10000).toFixed(0) + '萬';
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // 3. Table Rendering
+    const thead = document.getElementById('tableHead');
+    const tbody = document.getElementById('tableBody');
+
+    let headHTML = `<tr><th>年份</th>`;
+    targets.forEach(t => {
+      headHTML += `<th>${t.name} 再投入資產</th>`;
+    });
+    headHTML += `</tr>`;
+    thead.innerHTML = headHTML;
+
+    let bodyHTML = '';
+    for (let y = 0; y < years; y++) {
+      bodyHTML += `<tr><td>${y + 1}</td>`;
+      targets.forEach(t => {
+        bodyHTML += `<td style="font-weight:600;">${formatCurrency(t.reinvestArr[y])}</td>`;
+      });
+      bodyHTML += `</tr>`;
+    }
+    tbody.innerHTML = bodyHTML;
+  }
+
+  // Initial Load
+  window.onload = function() {
+    initialTargets.forEach(t => addTarget(t));
+    calculate();
+  };
+</script>
+
+</body>
+</html>
